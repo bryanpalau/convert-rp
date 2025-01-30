@@ -41,6 +41,17 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             border-radius: 10px;
         }
+
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .file-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -50,9 +61,13 @@
             <p class="text-center">Upload a .docx file to process and convert the report card.</p>
             
             <form id="uploadForm" class="text-center">
-                <div class="mb-3">
+                <div class="file-input-wrapper">
                     <input type="file" id="fileInput" class="form-control" accept=".docx" required>
-                    <small class="text-muted">Maximum file size: 5MB</small>
+                    <div class="file-info">
+                        <small class="text-muted">Maximum file size: 5MB</small>
+                        <br>
+                        <small class="text-muted">Supported format: .docx</small>
+                    </div>
                 </div>
                 <button type="submit" id="submitButton" class="btn btn-primary">
                     Upload & Convert
@@ -71,7 +86,8 @@
     
     <script>
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
-        const BACKEND_URL = "https://convert-rp-backend-5t5cj5glb-bryans-projects-f72a7b4d.vercel.app/upload";
+        const TIMEOUT_DURATION = 30000; // 30 seconds
+        const BACKEND_URL = "https://convert-rp-backend-2hx48263r-bryans-projects-f72a7b4d.vercel.app/upload";
 
         const uploadForm = document.getElementById("uploadForm");
         const fileInput = document.getElementById("fileInput");
@@ -120,19 +136,30 @@
             
             setLoading(true);
             showMessage("Processing your file...");
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
             
             try {
                 const response = await fetch(BACKEND_URL, {
                     method: "POST",
                     body: formData,
+                    signal: controller.signal,
                     headers: {
                         'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                     }
                 });
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(errorText || "Failed to process file");
+                    let errorMessage;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || "Failed to process file";
+                    } catch {
+                        errorMessage = await response.text() || "Failed to process file";
+                    }
+                    throw new Error(errorMessage);
                 }
                 
                 const blob = await response.blob();
@@ -154,7 +181,13 @@
                 fileInput.value = ''; // Reset file input
             } catch (error) {
                 console.error("Error:", error);
-                showMessage(`Error: ${error.message}`, true);
+                if (error.name === 'AbortError') {
+                    showMessage("Request timed out. Please try again.", true);
+                } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    showMessage("Unable to connect to server. Please try again later.", true);
+                } else {
+                    showMessage(`Error: ${error.message}`, true);
+                }
             } finally {
                 setLoading(false);
             }
