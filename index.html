@@ -58,15 +58,15 @@
     <div class="container mt-5">
         <div class="card p-4">
             <h2 class="text-center mb-4">Report Card Converter</h2>
-            <p class="text-center">Upload a .docx file to process and convert the report card.</p>
+            <p class="text-center">Upload a .docx or .pdf file to process and convert the report card.</p>
             
             <form id="uploadForm" class="text-center">
                 <div class="file-input-wrapper">
-                    <input type="file" id="fileInput" class="form-control" accept=".docx" required>
+                    <input type="file" id="fileInput" class="form-control" accept=".docx, .pdf" required>
                     <div class="file-info">
                         <small class="text-muted">Maximum file size: 5MB</small>
                         <br>
-                        <small class="text-muted">Supported format: .docx</small>
+                        <small class="text-muted">Supported formats: .docx, .pdf</small>
                     </div>
                 </div>
                 <button type="submit" id="submitButton" class="btn btn-primary">
@@ -120,8 +120,8 @@
             }
 
             // Validate file type
-            if (!file.name.toLowerCase().endsWith('.docx')) {
-                showMessage("Please upload only .docx files.", true);
+            if (!file.name.toLowerCase().endsWith('.docx') && !file.name.toLowerCase().endsWith('.pdf')) {
+                showMessage("Please upload only .docx or .pdf files.", true);
                 return;
             }
 
@@ -137,29 +137,14 @@
             setLoading(true);
             showMessage("Processing your file...");
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
-            
             try {
                 const response = await fetch(BACKEND_URL, {
                     method: "POST",
-                    body: formData,
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                    }
+                    body: formData
                 });
-                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
-                    let errorMessage;
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error || "Failed to process file";
-                    } catch {
-                        errorMessage = await response.text() || "Failed to process file";
-                    }
-                    throw new Error(errorMessage);
+                    throw new Error("Failed to process file");
                 }
                 
                 const blob = await response.blob();
@@ -167,7 +152,6 @@
                     throw new Error("Received empty file from server");
                 }
                 
-                // Create download link
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = downloadUrl;
@@ -178,16 +162,9 @@
                 window.URL.revokeObjectURL(downloadUrl);
                 
                 showMessage("Conversion completed! Your file is downloading.");
-                fileInput.value = ''; // Reset file input
+                fileInput.value = ''; 
             } catch (error) {
-                console.error("Error:", error);
-                if (error.name === 'AbortError') {
-                    showMessage("Request timed out. Please try again.", true);
-                } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                    showMessage("Unable to connect to server. Please try again later.", true);
-                } else {
-                    showMessage(`Error: ${error.message}`, true);
-                }
+                showMessage(`Error: ${error.message}`, true);
             } finally {
                 setLoading(false);
             }
