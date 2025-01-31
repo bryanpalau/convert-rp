@@ -58,15 +58,15 @@
     <div class="container mt-5">
         <div class="card p-4">
             <h2 class="text-center mb-4">Report Card Converter</h2>
-            <p class="text-center">Upload a .docx or .pdf file to process and convert the report card.</p>
+            <p class="text-center">Upload a .docx file to process and convert the report card.</p>
             
             <form id="uploadForm" class="text-center">
                 <div class="file-input-wrapper">
-                    <input type="file" id="fileInput" class="form-control" accept=".docx, .pdf" required>
+                    <input type="file" id="fileInput" class="form-control" accept=".docx" required>
                     <div class="file-info">
                         <small class="text-muted">Maximum file size: 5MB</small>
                         <br>
-                        <small class="text-muted">Supported formats: .docx, .pdf</small>
+                        <small class="text-muted">Supported format: .docx only</small>
                     </div>
                 </div>
                 <button type="submit" id="submitButton" class="btn btn-primary">
@@ -120,8 +120,8 @@
             }
 
             // Validate file type
-            if (!file.name.toLowerCase().endsWith('.docx') && !file.name.toLowerCase().endsWith('.pdf')) {
-                showMessage("Please upload only .docx or .pdf files.", true);
+            if (!file.name.toLowerCase().endsWith('.docx')) {
+                showMessage("Only .docx files are supported.", true);
                 return;
             }
 
